@@ -14,7 +14,7 @@ router.get("/", async (req, res) => {
 
     const limitPerPage = Math.max(1, +limit);
 
-    const offset = currentPage - 1 + limitPerPage;
+    const offset = (currentPage - 1) * limitPerPage;
 
     const filterConditions = [];
 
