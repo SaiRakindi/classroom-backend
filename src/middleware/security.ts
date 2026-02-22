@@ -1,14 +1,17 @@
-import { ArcjetNodeRequest } from "./../../node_modules/@arcjet/node/index.d";
-import type { Request, Response, NextFunction } from "express";
-import aj from "../config//arcjet";
 import { slidingWindow } from "@arcjet/node";
+import type { ArcjetNodeRequest } from "@arcjet/node";
+import type { NextFunction, Request, Response } from "express";
+
+import aj from "../config/arcjet";
 
 const securityMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  if (process.env.NODE_ENV === "test") return next();
+  if (process.env.NODE_ENV === "test") {
+    return next();
+  }
 
   try {
     const role: RateLimitRole = req.user?.role ?? "guest";
@@ -19,7 +22,7 @@ const securityMiddleware = async (
     switch (role) {
       case "admin":
         limit = 20;
-        message = "Admin request limit exceeded (20 per minute). Slow down.";
+        message = "Admin request limit exceeded (20 per minute). Slow down!";
         break;
       case "teacher":
       case "student":
@@ -67,18 +70,18 @@ const securityMiddleware = async (
     }
 
     if (decision.isDenied() && decision.reason.isRateLimit()) {
-      return res.status(403).json({
-        error: "Too may requests",
-        message: message,
+      return res.status(429).json({
+        error: "Too Many Requests",
+        message,
       });
     }
 
     next();
   } catch (error) {
-    console.error("Arcjet middleware error", error);
+    console.error("Arcjet middleware error:", error);
     res.status(500).json({
       error: "Internal Server Error",
-      message: "Something went wrong with security middleware",
+      message: "Something went wrong with the security middleware.",
     });
   }
 };
