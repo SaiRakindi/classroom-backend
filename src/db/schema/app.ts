@@ -1,15 +1,24 @@
-import { relations } from "drizzle-orm";
 import {
   integer,
   jsonb,
-  index,
   pgEnum,
   pgTable,
   text,
   timestamp,
+  unique,
   varchar,
+  index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
-import { users } from "./auth.js";
+import { relations } from "drizzle-orm";
+
+import { user } from "./auth.js";
+
+export const classStatusEnum = pgEnum("class_status", [
+  "active",
+  "inactive",
+  "archived",
+]);
 
 const timestamps = {
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -19,32 +28,22 @@ const timestamps = {
     .notNull(),
 };
 
-export const classStatusEnum = pgEnum("class_status", [
-  "active",
-  "inactive",
-  "archived",
-]);
-
 export const departments = pgTable("departments", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   code: varchar("code", { length: 50 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-
+  description: varchar("description", { length: 255 }),
   ...timestamps,
 });
 
 export const subjects = pgTable("subjects", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-
   departmentId: integer("department_id")
     .notNull()
     .references(() => departments.id, { onDelete: "restrict" }),
-
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 50 }).notNull().unique(),
-  description: text("description"),
-
+  description: varchar("description", { length: 255 }),
   ...timestamps,
 });
 
@@ -52,52 +51,50 @@ export const classes = pgTable(
   "classes",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-
     subjectId: integer("subject_id")
       .notNull()
       .references(() => subjects.id, { onDelete: "cascade" }),
     teacherId: text("teacher_id")
       .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
-
-    inviteCode: varchar("invite_code", { length: 50 }).notNull().unique(),
-    capacity: integer("capacity").notNull().default(50),
-    status: classStatusEnum("status").notNull().default("active"),
-    schedules: jsonb("schedules").$type<Schedule[]>().notNull(),
-
+      .references(() => user.id, { onDelete: "restrict" }),
+    inviteCode: text("invite_code").notNull().unique(),
+    name: varchar("name", { length: 255 }).notNull(),
+    bannerCldPubId: text("banner_cld_pub_id"),
+    bannerUrl: text("banner_url"),
+    description: text("description"),
+    capacity: integer("capacity").default(50).notNull(),
+    status: classStatusEnum("status").default("active").notNull(),
+    schedules: jsonb("schedules").$type<any[]>().default([]).notNull(),
     ...timestamps,
   },
-  (table) => ({
-    subjectIdIdx: index("classes_subject_id_idx").on(table.subjectId),
-    teacherIdIdx: index("classes_teacher_id_idx").on(table.teacherId),
-  })
+  (table) => [
+    index("classes_subject_id_idx").on(table.subjectId),
+    index("classes_teacher_id_idx").on(table.teacherId),
+  ]
 );
 
 export const enrollments = pgTable(
   "enrollments",
   {
-    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-
     studentId: text("student_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => user.id, { onDelete: "cascade" }),
     classId: integer("class_id")
       .notNull()
       .references(() => classes.id, { onDelete: "cascade" }),
-
-    ...timestamps,
   },
-  (table) => ({
-    studentIdIdx: index("enrollments_student_id_idx").on(table.studentId),
-    classIdIdx: index("enrollments_class_id_idx").on(table.classId),
-    studentClassUnique: index("enrollments_student_class_unique").on(
+  (table) => [
+    primaryKey({ columns: [table.studentId, table.classId] }),
+    unique("enrollments_student_id_class_id_unique").on(
       table.studentId,
       table.classId
     ),
-  })
+    index("enrollments_student_id_idx").on(table.studentId),
+    index("enrollments_class_id_idx").on(table.classId),
+  ]
 );
 
-export const departmentsRelations = relations(departments, ({ many }) => ({
+export const departmentRelations = relations(departments, ({ many }) => ({
   subjects: many(subjects),
 }));
 
@@ -114,17 +111,17 @@ export const classesRelations = relations(classes, ({ one, many }) => ({
     fields: [classes.subjectId],
     references: [subjects.id],
   }),
-  teacher: one(users, {
+  teacher: one(user, {
     fields: [classes.teacherId],
-    references: [users.id],
+    references: [user.id],
   }),
   enrollments: many(enrollments),
 }));
 
 export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
-  student: one(users, {
+  student: one(user, {
     fields: [enrollments.studentId],
-    references: [users.id],
+    references: [user.id],
   }),
   class: one(classes, {
     fields: [enrollments.classId],

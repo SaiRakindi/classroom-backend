@@ -1,30 +1,26 @@
-import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 import express from "express";
+import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 import { departments, subjects } from "../db/schema/index.js";
-
 import { db } from "../db/index.js";
 
 const router = express.Router();
 
+// Get all subjects with optional search, filtering and pagination
 router.get("/", async (req, res) => {
   try {
     const { search, department, page = 1, limit = 10 } = req.query;
-
-    // const currentPage = Math.max(1, +page);
-
-    // const limitPerPage = Math.max(1, +limit);
 
     const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
     const limitPerPage = Math.min(
       Math.max(1, parseInt(String(limit), 10) || 10),
       100
-    );
+    ); // Max 100 records per page
 
     const offset = (currentPage - 1) * limitPerPage;
 
     const filterConditions = [];
 
-    //If search query exists, filter by suject name OR subject code
+    // If search query exists, filter by subject name OR subject code
     if (search) {
       filterConditions.push(
         or(
@@ -34,17 +30,13 @@ router.get("/", async (req, res) => {
       );
     }
 
-    //If department filter exists, match department name
+    // If department filter exists, match department name
     if (department) {
-      const departmentPattern = `%${String(department).replace(
-        /[%_]/g,
-        "\\$&"
-      )}%`;
-
-      filterConditions.push(ilike(departments.name, departmentPattern));
+      const deptPattern = `%${String(department).replace(/[%_]/g, "\\$&")}%`;
+      filterConditions.push(ilike(departments.name, deptPattern));
     }
 
-    //Combine all filters using AND if any exist
+    // Combine all filters using AND if any exist
     const whereClause =
       filterConditions.length > 0 ? and(...filterConditions) : undefined;
 
@@ -77,8 +69,8 @@ router.get("/", async (req, res) => {
         totalPages: Math.ceil(totalCount / limitPerPage),
       },
     });
-  } catch (error) {
-    console.error(`GET /subjects error ${error}`);
+  } catch (e) {
+    console.error(`GET /subjects error: ${e}`);
     res.status(500).json({ error: "Failed to get subjects" });
   }
 });
