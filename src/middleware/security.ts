@@ -40,34 +40,34 @@ const securityMiddleware = async (
       })
     );
 
-    const arcjetRequest: ArcjetNodeRequest = {
-      headers: req.headers,
-      method: req.method,
-      url: req.originalUrl ?? req.url,
-      socket: {
-        remoteAddress: req.socket.remoteAddress ?? req.ip ?? "0.0.0.0",
-      },
-    };
+    // const arcjetRequest: ArcjetNodeRequest = {
+    //   headers: req.headers,
+    //   method: req.method,
+    //   url: req.originalUrl ?? req.url,
+    //   socket: {
+    //     remoteAddress: req.socket.remoteAddress ?? req.ip ?? "0.0.0.0",
+    //   },
+    // };
 
-    const decision = await client.protect(arcjetRequest);
+    // const decision = await client.protect(arcjetRequest);
 
-    if (decision.isDenied() && decision.reason.isBot()) {
-      return res.status(403).json({
-        error: "Forbidden",
-        message: "Automated requests are not allowed.",
-      });
-    }
+    // if (decision.isDenied() && decision.reason.isBot()) {
+    //   return res.status(403).json({
+    //     error: "Forbidden",
+    //     message: "Automated requests are not allowed.",
+    //   });
+    // }
 
-    if (decision.isDenied() && decision.reason.isShield()) {
-      return res.status(403).json({
-        error: "Forbidden",
-        message: "Request blocked by security policy",
-      });
-    }
+    // if (decision.isDenied() && decision.reason.isShield()) {
+    //   return res.status(403).json({
+    //     error: "Forbidden",
+    //     message: "Request blocked by security policy",
+    //   });
+    // }
 
-    if (decision.isDenied() && decision.reason.isRateLimit()) {
-      return res.status(429).json({ error: "Too many requests.", message });
-    }
+    // if (decision.isDenied() && decision.reason.isRateLimit()) {
+    //   return res.status(429).json({ error: "Too many requests.", message });
+    // }
 
     next();
   } catch (e) {
